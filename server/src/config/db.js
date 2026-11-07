@@ -14,17 +14,17 @@ const connectDB = async () => {
     const mongoUri = process.env.MONGO_URI;
 
     if (!mongoUri || mongoUri === "your_mongodb_connection_string") {
-      console.warn("⚠️ Warning: MONGO_URI is not configured yet in .env file.");
-      console.warn("⚠️ Database connection skipped for now until a valid URI is provided.");
+      console.warn(" Warning: MONGO_URI is not configured yet in .env file.");
+      console.warn("Database connection skipped for now until a valid URI is provided.");
       return;
     }
 
     // Connect to MongoDB
     const conn = await mongoose.connect(mongoUri);
 
-    console.log(`✅ MongoDB Connected successfully: ${conn.connection.host}`);
+    console.log(` MongoDB Connected successfully: ${conn.connection.host}`);
   } catch (error) {
-    console.error(`❌ MongoDB connection error: ${error.message}`);
+    console.error(` MongoDB connection error: ${error.message}`);
     // Exit process with failure code if database fails to connect
     process.exit(1);
   }
