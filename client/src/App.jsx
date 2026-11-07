@@ -66,7 +66,7 @@ function HomePage() {
         <p style={{ color: "var(--text-muted)", fontSize: "0.95rem" }}>
           <strong>Frontend:</strong> React 19 + Vite + React Router (Active)
           <br />
-          <strong>Backend API:</strong> Express Server (Ready on Port 5000)
+          <strong>Backend API:</strong> Express Server (Ready on Port 5050)
           <br />
           <strong>Architecture:</strong> Node.js MVC + MongoDB Atlas
         </p>

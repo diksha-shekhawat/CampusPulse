@@ -27,13 +27,18 @@ app.use(express.json());
 // Parses URL-encoded form data
 app.use(express.urlencoded({ extended: true }));
 
+const mongoose = require("mongoose");
+
 // ------------------------------------------------------------------------------
-// Health Check Route (Used to verify backend is working)
+// Health Check Route (Used to verify backend and database connection)
 // ------------------------------------------------------------------------------
 app.get("/api/health", (req, res) => {
+  const isDbConnected = mongoose.connection.readyState === 1;
+
   res.status(200).json({
     success: true,
     message: "Campus Pulse API is up and running!",
+    database: isDbConnected ? "Connected to MongoDB Atlas" : "Disconnected",
     timestamp: new Date().toISOString()
   });
 });

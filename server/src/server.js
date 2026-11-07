@@ -10,8 +10,8 @@ require("dotenv").config();
 const app = require("./app");
 const connectDB = require("./config/db");
 
-// Set port from environment variable, fallback to 5000 if not specified
-const PORT = process.env.PORT || 5000;
+// Set port from environment variable, fallback to 5050 if not specified
+const PORT = process.env.PORT || 5050;
 
 /**
  * Start the HTTP server after connecting to database.
