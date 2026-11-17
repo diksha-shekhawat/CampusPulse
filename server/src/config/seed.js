@@ -1,10 +1,10 @@
 // ==============================================================================
 // Database Seeder (server/src/config/seed.js)
 // ==============================================================================
-// Seeds initial Admin account and sample Student Organisations into MongoDB Atlas.
-// Per Section 7 of the Blueprint:
-// - Initial Admin account is created directly in the database (no public self-registration).
-// - Organisations are provisioned with an organisationId and temporary password.
+// Creates pre-configured demo accounts for:
+// 1. Student (student@jklu.edu.in / Student@123)
+// 2. Organisation (acm-student-chapter / Club@123)
+// 3. Admin (admin@jklu.edu.in / Admin@123)
 
 require("dotenv").config();
 const mongoose = require("mongoose");
@@ -14,81 +14,126 @@ const connectDB = require("./db");
 
 const seedData = async () => {
   try {
-    console.log("🌱 Starting Campus Pulse database seeder...");
+    console.log("🌱 Starting Campus Pulse demo account seeder...\n");
 
     await connectDB();
 
     // ----------------------------------------------------------------------------
-    // 1. Seed Initial Admin Account
+    // 1. Seed Demo Admin Account
     // ----------------------------------------------------------------------------
     const adminEmail = "admin@jklu.edu.in";
-    const existingAdmin = await User.findOne({ email: adminEmail });
+    let admin = await User.findOne({ email: adminEmail });
 
-    if (!existingAdmin) {
-      const adminSalt = await bcrypt.genSalt(10);
-      const adminPasswordHash = await bcrypt.hash("Admin@123", adminSalt);
+    const adminSalt = await bcrypt.genSalt(10);
+    const adminPasswordHash = await bcrypt.hash("Admin@123", adminSalt);
 
-      await User.create({
+    if (!admin) {
+      admin = await User.create({
         name: "Campus Pulse Administrator",
         email: adminEmail,
         passwordHash: adminPasswordHash,
         role: "admin",
         isActive: true
       });
-
-      console.log("✅ Seeded Admin Account:");
-      console.log(`   Email:    ${adminEmail}`);
-      console.log(`   Password: Admin@123`);
+      console.log("✅ Created Demo Admin Account");
     } else {
-      console.log(`ℹ️ Admin account (${adminEmail}) already exists. Skipping.`);
+      admin.passwordHash = adminPasswordHash;
+      await admin.save();
+      console.log("✅ Verified / Updated Demo Admin Account");
     }
 
     // ----------------------------------------------------------------------------
-    // 2. Seed Initial Sample Organisations
+    // 2. Seed Demo Student Account
     // ----------------------------------------------------------------------------
-    const sampleOrgs = [
+    const studentEmail = "student@jklu.edu.in";
+    let student = await User.findOne({ email: studentEmail });
+
+    const studentSalt = await bcrypt.genSalt(10);
+    const studentPasswordHash = await bcrypt.hash("Student@123", studentSalt);
+
+    if (!student) {
+      student = await User.create({
+        name: "Aarav Sharma",
+        email: studentEmail,
+        passwordHash: studentPasswordHash,
+        role: "student",
+        course: "BTech",
+        enrollmentYear: 2023,
+        passingOutYear: 2027,
+        emailVerifiedAt: new Date(),
+        isActive: true
+      });
+      console.log("✅ Created Demo Student Account");
+    } else {
+      student.passwordHash = studentPasswordHash;
+      await student.save();
+      console.log("✅ Verified / Updated Demo Student Account");
+    }
+
+    // ----------------------------------------------------------------------------
+    // 3. Seed Demo Organisation Accounts
+    // ----------------------------------------------------------------------------
+    const orgSalt = await bcrypt.genSalt(10);
+    const clubPasswordHash = await bcrypt.hash("Club@123", orgSalt);
+
+    const demoOrgs = [
       {
         name: "ACM Student Chapter",
         organisationId: "acm-student-chapter",
-        description: "Association for Computing Machinery student chapter fostering technical excellence, hackathons, and coding culture.",
+        description: "Official Association for Computing Machinery student chapter fostering hackathons, coding workshops, and tech culture.",
         category: "Technical"
       },
       {
         name: "Rhythm Dance Society",
         organisationId: "dance-society",
-        description: "Official campus dance society for classical, western, and contemporary performances.",
+        description: "Official campus cultural society celebrating classical and modern dance forms.",
         category: "Cultural"
       },
       {
         name: "JKLU Sports Club",
         organisationId: "sports-club",
-        description: "Coordinating inter-college tournaments, cricket, football, basketball, and campus sports fests.",
+        description: "Organizing intramural sports leagues, tournaments, and fitness events.",
         category: "Sports"
       }
     ];
 
-    const tempPassword = "tempPassword123";
-    const orgSalt = await bcrypt.genSalt(10);
-    const orgPasswordHash = await bcrypt.hash(tempPassword, orgSalt);
-
-    for (const org of sampleOrgs) {
-      const existingOrg = await Organisation.findOne({ organisationId: org.organisationId });
-      if (!existingOrg) {
-        await Organisation.create({
-          ...org,
-          passwordHash: orgPasswordHash,
-          mustChangePassword: true, // Forces representative to change password on first login
+    for (const orgData of demoOrgs) {
+      let org = await Organisation.findOne({ organisationId: orgData.organisationId });
+      if (!org) {
+        org = await Organisation.create({
+          ...orgData,
+          passwordHash: clubPasswordHash,
+          mustChangePassword: false,
           isActive: true
         });
-        console.log(`✅ Seeded Organisation: ${org.name}`);
-        console.log(`   ID:       ${org.organisationId}`);
-        console.log(`   Password: ${tempPassword}`);
+        console.log(`✅ Created Demo Organisation: ${org.name} (${org.organisationId})`);
       } else {
-        console.log(`ℹ️ Organisation (${org.organisationId}) already exists. Skipping.`);
+        org.passwordHash = clubPasswordHash;
+        org.mustChangePassword = false;
+        await org.save();
+        console.log(`✅ Verified / Updated Demo Organisation: ${org.name} (${org.organisationId})`);
       }
     }
 
-    console.log("\n🎉 Database seeding completed successfully!");
+    console.log("\n========================================================");
+    console.log("🎓 CAMPUS PULSE DEMO CREDENTIALS READY FOR TESTING");
+    console.log("========================================================");
+    console.log("1. STUDENT ACCOUNT:");
+    console.log("   Portal:   http://localhost:5173/student/login");
+    console.log("   Email:    student@jklu.edu.in");
+    console.log("   Password: Student@123");
+    console.log("--------------------------------------------------------");
+    console.log("2. ORGANISATION ACCOUNT:");
+    console.log("   Portal:   http://localhost:5173/organisation/login");
+    console.log("   ID:       acm-student-chapter");
+    console.log("   Password: Club@123");
+    console.log("--------------------------------------------------------");
+    console.log("3. ADMIN ACCOUNT:");
+    console.log("   Portal:   http://localhost:5173/admin/login");
+    console.log("   Email:    admin@jklu.edu.in");
+    console.log("   Password: Admin@123");
+    console.log("========================================================\n");
+
     process.exit(0);
   } catch (error) {
     console.error("❌ Seeding failed:", error.message);

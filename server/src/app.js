@@ -12,6 +12,7 @@ const mongoose = require("mongoose");
 
 // Routes
 const authRoutes = require("./routes/authRoutes");
+const postRoutes = require("./routes/postRoutes");
 
 const app = express();
 
@@ -20,9 +21,23 @@ const app = express();
 // ------------------------------------------------------------------------------
 
 // 1. CORS (Cross-Origin Resource Sharing):
-// Allows our React frontend (running on port 5173) to send cookies and make API requests.
+// Allows our React frontend (Vite ports 5173, 5174, etc.) to send cookies and make API requests.
+const allowedOrigins = [
+  "http://localhost:5173",
+  "http://localhost:5174",
+  "http://localhost:5175",
+  "http://127.0.0.1:5173",
+  "http://127.0.0.1:5174"
+];
+
 app.use(cors({
-  origin: process.env.CLIENT_URL || "http://localhost:5173",
+  origin: function (origin, callback) {
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin) || process.env.CLIENT_URL === origin) {
+      return callback(null, true);
+    }
+    return callback(new Error("CORS error: Origin not allowed"), false);
+  },
   credentials: true
 }));
 
@@ -40,6 +55,7 @@ app.use(express.urlencoded({ extended: true }));
 // API Routes
 // ------------------------------------------------------------------------------
 app.use("/api/auth", authRoutes);
+app.use("/api/posts", postRoutes);
 
 // ------------------------------------------------------------------------------
 // Health Check Route (Used to verify backend and database connection)
