@@ -7,6 +7,11 @@
 
 const express = require("express");
 const cors = require("cors");
+const cookieParser = require("cookie-parser");
+const mongoose = require("mongoose");
+
+// Routes
+const authRoutes = require("./routes/authRoutes");
 
 const app = express();
 
@@ -15,19 +20,26 @@ const app = express();
 // ------------------------------------------------------------------------------
 
 // 1. CORS (Cross-Origin Resource Sharing):
-// Allows our React frontend (running on a different port like 5173) to make API requests to this backend.
+// Allows our React frontend (running on port 5173) to send cookies and make API requests.
 app.use(cors({
   origin: process.env.CLIENT_URL || "http://localhost:5173",
   credentials: true
 }));
 
-// 2. Body Parsers:
+// 2. Cookie Parser:
+// Parses incoming cookies so we can read `req.cookies.token` in our auth middleware.
+app.use(cookieParser());
+
+// 3. Body Parsers:
 // Parses incoming JSON payloads so we can read `req.body` in controllers.
 app.use(express.json());
 // Parses URL-encoded form data
 app.use(express.urlencoded({ extended: true }));
 
-const mongoose = require("mongoose");
+// ------------------------------------------------------------------------------
+// API Routes
+// ------------------------------------------------------------------------------
+app.use("/api/auth", authRoutes);
 
 // ------------------------------------------------------------------------------
 // Health Check Route (Used to verify backend and database connection)
