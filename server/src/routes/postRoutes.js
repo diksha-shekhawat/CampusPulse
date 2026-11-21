@@ -13,7 +13,12 @@ const {
   registerEvent,
   getUpcomingEvents,
   getMyPosts,
-  deletePost
+  deletePost,
+  toggleLikePost,
+  removeLikePost,
+  toggleSavePost,
+  removeSavePost,
+  getSavedPosts
 } = require("../controllers/postController");
 
 const { protect, authorize } = require("../middleware/auth");
@@ -36,6 +41,9 @@ router.get("/feed", optionalAuth, getFeed);
 // Today & Tomorrow Upcoming Events Spotlight
 router.get("/upcoming-events", optionalAuth, getUpcomingEvents);
 
+// Student Bookmarked / Saved Posts
+router.get("/saved", protect, authorize("student"), getSavedPosts);
+
 // ------------------------------------------------------------------------------
 // Student Action Routes
 // ------------------------------------------------------------------------------
@@ -45,6 +53,14 @@ router.post("/:id/vote", protect, authorize("student"), votePoll);
 
 // RSVP / Register for an event (Student only)
 router.post("/:id/register", protect, authorize("student"), registerEvent);
+
+// Like / Unlike a post (Student only)
+router.post("/:id/like", protect, authorize("student"), toggleLikePost);
+router.delete("/:id/like", protect, authorize("student"), removeLikePost);
+
+// Save / Unsave a post bookmark (Student only)
+router.post("/:id/save", protect, authorize("student"), toggleSavePost);
+router.delete("/:id/save", protect, authorize("student"), removeSavePost);
 
 // ------------------------------------------------------------------------------
 // Organisation Content Management Routes

@@ -10,6 +10,7 @@ const Post = require("./Post");
 const Follow = require("./Follow");
 const PollVote = require("./PollVote");
 const EventRegistration = require("./EventRegistration");
+const PostInteraction = require("./PostInteraction");
 
 module.exports = {
   User,
@@ -17,5 +18,6 @@ module.exports = {
   Post,
   Follow,
   PollVote,
-  EventRegistration
+  EventRegistration,
+  PostInteraction
 };

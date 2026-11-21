@@ -10,7 +10,7 @@
 // - Event RSVP: Strictly 1 registration per student per event.
 // - Upcoming Events: Spotlight section for events starting Today or Tomorrow (Asia/Kolkata).
 
-const { Post, PollVote, EventRegistration, Follow } = require("../models");
+const { Post, PollVote, EventRegistration, Follow, PostInteraction } = require("../models");
 
 /**
  * Create a new Post (Normal, Poll, or Event).
@@ -131,7 +131,7 @@ const createPost = async (req, res, next) => {
  */
 const getFeed = async (req, res, next) => {
   try {
-    const tab = req.query.tab || "discover"; // 'following' or 'discover'
+    const tab = req.query.tab || "discover"; // 'following', 'discover', or 'saved'
     let filter = { status: "published" };
 
     // If 'following' tab is requested by a logged-in student
@@ -149,19 +149,63 @@ const getFeed = async (req, res, next) => {
 
       // Only show posts from followed organisations
       filter.organisationId = { $in: followedOrgIds };
+    } else if (tab === "saved") {
+      if (!req.user || req.role !== "student") {
+        return res.status(401).json({
+          success: false,
+          message: "Please log in as a student to view your Saved posts."
+        });
+      }
+
+      // Find all posts bookmarked by this student
+      const saves = await PostInteraction.find({
+        studentId: req.user._id,
+        type: "save"
+      }).sort({ createdAt: -1 });
+
+      const savedPostIds = saves.map((s) => s.postId);
+      filter._id = { $in: savedPostIds };
     }
 
     const posts = await Post.find(filter)
       .sort({ createdAt: -1 })
       .populate("organisationId", "name organisationId imageUrl category");
 
-    // Format posts with live vote percentages and student interaction state
+    // Format posts with live vote percentages, likes, bookmarks, and student interaction state
     const studentId = req.user && req.role === "student" ? req.user._id : null;
 
     const formattedPosts = await Promise.all(
       posts.map(async (post) => {
         const postObj = post.toObject();
 
+        // 1. Post Likes count and status
+        const likesCount = await PostInteraction.countDocuments({
+          postId: post._id,
+          type: "like"
+        });
+        postObj.likesCount = likesCount;
+
+        let isLiked = false;
+        let isSaved = false;
+        if (studentId) {
+          const userLike = await PostInteraction.findOne({
+            studentId,
+            postId: post._id,
+            type: "like"
+          });
+          isLiked = !!userLike;
+
+          const userSave = await PostInteraction.findOne({
+            studentId,
+            postId: post._id,
+            type: "save"
+          });
+          isSaved = !!userSave;
+        }
+        postObj.isLiked = isLiked;
+        postObj.isSaved = isSaved;
+
+        // 2. Poll-specific data
         if (post.type === "poll") {
           // Total votes
           const totalVotes = await PollVote.countDocuments({ postId: post._id });
@@ -458,6 +502,7 @@ const deletePost = async (req, res, next) => {
     await Post.findByIdAndDelete(post._id);
     await PollVote.deleteMany({ postId: post._id });
     await EventRegistration.deleteMany({ postId: post._id });
+    await PostInteraction.deleteMany({ postId: post._id });
 
     res.status(200).json({
       success: true,
@@ -468,6 +513,182 @@ const deletePost = async (req, res, next) => {
   }
 };
 
+/**
+ * Toggle Like on a Post (Idempotent).
+ * @route POST /api/posts/:id/like
+ * @access Private (Student only)
+ */
+const toggleLikePost = async (req, res, next) => {
+  try {
+    const postId = req.params.id;
+    const post = await Post.findById(postId);
+
+    if (!post) {
+      return res.status(404).json({
+        success: false,
+        message: "Post not found."
+      });
+    }
+
+    const existingLike = await PostInteraction.findOne({
+      studentId: req.user._id,
+      postId: post._id,
+      type: "like"
+    });
+
+    let isLiked = false;
+    let message = "";
+
+    if (existingLike) {
+      // Toggle off / remove like
+      await PostInteraction.findByIdAndDelete(existingLike._id);
+      isLiked = false;
+      message = "Unliked post.";
+    } else {
+      // Create like (compound index ensures no duplicates)
+      await PostInteraction.create({
+        studentId: req.user._id,
+        postId: post._id,
+        type: "like"
+      });
+      isLiked = true;
+      message = "Liked post!";
+    }
+
+    const likesCount = await PostInteraction.countDocuments({
+      postId: post._id,
+      type: "like"
+    });
+
+    res.status(200).json({
+      success: true,
+      isLiked,
+      likesCount,
+      message
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Explicitly remove Like from a Post.
+ * @route DELETE /api/posts/:id/like
+ * @access Private (Student only)
+ */
+const removeLikePost = async (req, res, next) => {
+  try {
+    const postId = req.params.id;
+
+    await PostInteraction.findOneAndDelete({
+      studentId: req.user._id,
+      postId,
+      type: "like"
+    });
+
+    const likesCount = await PostInteraction.countDocuments({
+      postId,
+      type: "like"
+    });
+
+    res.status(200).json({
+      success: true,
+      isLiked: false,
+      likesCount,
+      message: "Like removed."
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Toggle Save / Bookmark on a Post (Idempotent).
+ * @route POST /api/posts/:id/save
+ * @access Private (Student only)
+ */
+const toggleSavePost = async (req, res, next) => {
+  try {
+    const postId = req.params.id;
+    const post = await Post.findById(postId);
+
+    if (!post) {
+      return res.status(404).json({
+        success: false,
+        message: "Post not found."
+      });
+    }
+
+    const existingSave = await PostInteraction.findOne({
+      studentId: req.user._id,
+      postId: post._id,
+      type: "save"
+    });
+
+    let isSaved = false;
+    let message = "";
+
+    if (existingSave) {
+      // Toggle off / unsave
+      await PostInteraction.findByIdAndDelete(existingSave._id);
+      isSaved = false;
+      message = "Removed from saved posts.";
+    } else {
+      // Create bookmark
+      await PostInteraction.create({
+        studentId: req.user._id,
+        postId: post._id,
+        type: "save"
+      });
+      isSaved = true;
+      message = "Post saved to your bookmarks!";
+    }
+
+    res.status(200).json({
+      success: true,
+      isSaved,
+      message
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Explicitly remove Save / Bookmark from a Post.
+ * @route DELETE /api/posts/:id/save
+ * @access Private (Student only)
+ */
+const removeSavePost = async (req, res, next) => {
+  try {
+    const postId = req.params.id;
+
+    await PostInteraction.findOneAndDelete({
+      studentId: req.user._id,
+      postId,
+      type: "save"
+    });
+
+    res.status(200).json({
+      success: true,
+      isSaved: false,
+      message: "Bookmark removed."
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Get all Saved / Bookmarked Posts for current student.
+ * @route GET /api/posts/saved
+ * @access Private (Student only)
+ */
+const getSavedPosts = async (req, res, next) => {
+  req.query.tab = "saved";
+  return getFeed(req, res, next);
+};
+
 module.exports = {
   createPost,
   getFeed,
@@ -475,5 +696,10 @@ module.exports = {
   registerEvent,
   getUpcomingEvents,
   getMyPosts,
-  deletePost
+  deletePost,
+  toggleLikePost,
+  removeLikePost,
+  toggleSavePost,
+  removeSavePost,
+  getSavedPosts
 };

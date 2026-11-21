@@ -590,7 +590,18 @@ function StudentFeedSection() {
   const [loadingEvents, setLoadingEvents] = useState(true);
   const [clubs, setClubs] = useState([]);
   const [loadingClubs, setLoadingClubs] = useState(true);
-  const [actionAlert, setActionAlert] = useState(null);
+  const [cardAlerts, setCardAlerts] = useState({});
+
+  const setCardAlert = (id, alertObj) => {
+    setCardAlerts((prev) => ({ ...prev, [id]: alertObj }));
+    setTimeout(() => {
+      setCardAlerts((prev) => {
+        const copy = { ...prev };
+        delete copy[id];
+        return copy;
+      });
+    }, 4000);
+  };
 
   const fetchUpcomingEvents = async () => {
     try {
@@ -660,7 +671,6 @@ function StudentFeedSection() {
   // 1. Cast a vote on a Poll
   const handleVote = async (postId, optionId) => {
     try {
-      setActionAlert(null);
       const res = await fetch(`http://localhost:5050/api/posts/${postId}/vote`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -673,18 +683,17 @@ function StudentFeedSection() {
         throw new Error(data.message || "Failed to submit vote.");
       }
 
-      setActionAlert({ type: "success", message: "Vote recorded successfully!" });
+      setCardAlert(postId, { type: "success", message: "Vote recorded successfully!" });
       // Refresh feed to get updated vote counts and percentages
       fetchFeed(activeTab);
     } catch (err) {
-      setActionAlert({ type: "error", message: err.message });
+      setCardAlert(postId, { type: "error", message: err.message });
     }
   };
 
   // 2. RSVP / Register for an Event
   const handleRegisterEvent = async (postId) => {
     try {
-      setActionAlert(null);
       const res = await fetch(`http://localhost:5050/api/posts/${postId}/register`, {
         method: "POST",
         credentials: "include"
@@ -695,19 +704,18 @@ function StudentFeedSection() {
         throw new Error(data.message || "Registration action failed.");
       }
 
-      setActionAlert({ type: "success", message: data.message });
+      setCardAlert(postId, { type: "success", message: data.message });
       // Refresh both feed and spotlight events
       fetchFeed(activeTab);
       fetchUpcomingEvents();
     } catch (err) {
-      setActionAlert({ type: "error", message: err.message });
+      setCardAlert(postId, { type: "error", message: err.message });
     }
   };
 
   // 3. Toggle Follow / Unfollow a Club
   const handleToggleFollow = async (orgId, isCurrentlyFollowing) => {
     try {
-      setActionAlert(null);
       const endpoint = `http://localhost:5050/api/organisations/${orgId}/follow`;
       const method = isCurrentlyFollowing ? "DELETE" : "POST";
 
@@ -721,7 +729,7 @@ function StudentFeedSection() {
         throw new Error(data.message || "Follow action failed.");
       }
 
-      setActionAlert({ type: "success", message: data.message });
+      setCardAlert(orgId, { type: "success", message: data.message });
 
       // If viewing clubs directory, refresh clubs
       if (activeTab === "clubs") {
@@ -731,19 +739,68 @@ function StudentFeedSection() {
         fetchFeed(activeTab);
       }
     } catch (err) {
-      setActionAlert({ type: "error", message: err.message });
+      setCardAlert(orgId, { type: "error", message: err.message });
+    }
+  };
+
+  // 4. Toggle Like on a Post
+  const handleToggleLike = async (postId) => {
+    try {
+      const res = await fetch(`http://localhost:5050/api/posts/${postId}/like`, {
+        method: "POST",
+        credentials: "include"
+      });
+      const data = await res.json();
+
+      if (!res.ok || !data.success) {
+        throw new Error(data.message || "Failed to update like.");
+      }
+
+      // Optimistically update post in list
+      setPosts((prevPosts) =>
+        prevPosts.map((p) =>
+          p._id === postId
+            ? { ...p, isLiked: data.isLiked, likesCount: data.likesCount }
+            : p
+        )
+      );
+    } catch (err) {
+      setCardAlert(postId, { type: "error", message: err.message });
+    }
+  };
+
+  // 5. Toggle Save / Bookmark on a Post
+  const handleToggleSave = async (postId) => {
+    try {
+      const res = await fetch(`http://localhost:5050/api/posts/${postId}/save`, {
+        method: "POST",
+        credentials: "include"
+      });
+      const data = await res.json();
+
+      if (!res.ok || !data.success) {
+        throw new Error(data.message || "Failed to update bookmark.");
+      }
+
+      setCardAlert(postId, { type: "success", message: data.message });
+
+      if (activeTab === "saved" && !data.isSaved) {
+        // If viewing saved posts and unsaved, remove from current list
+        setPosts((prevPosts) => prevPosts.filter((p) => p._id !== postId));
+      } else {
+        setPosts((prevPosts) =>
+          prevPosts.map((p) =>
+            p._id === postId ? { ...p, isSaved: data.isSaved } : p
+          )
+        );
+      }
+    } catch (err) {
+      setCardAlert(postId, { type: "error", message: err.message });
     }
   };
 
   return (
     <>
-      {/* Action Notification Alert */}
-      {actionAlert && (
-        <div className={`alert ${actionAlert.type === "success" ? "alert-success" : "alert-error"}`}>
-          {actionAlert.message}
-        </div>
-      )}
-
       {/* ------------------------------------------------------------------------ */}
       {/* 1. Upcoming Events Spotlight (Today & Tomorrow Highlights)                */}
       {/* ------------------------------------------------------------------------ */}
@@ -791,6 +848,20 @@ function StudentFeedSection() {
                   </p>
                 </div>
 
+                {cardAlerts[evt._id] && (
+                  <div style={{
+                    margin: "0.4rem 0",
+                    padding: "0.3rem 0.6rem",
+                    borderRadius: "var(--radius)",
+                    fontSize: "0.75rem",
+                    backgroundColor: cardAlerts[evt._id].type === "success" ? "#dcfce7" : "#fee2e2",
+                    color: cardAlerts[evt._id].type === "success" ? "#166534" : "#991b1b",
+                    border: `1px solid ${cardAlerts[evt._id].type === "success" ? "#bbf7d0" : "#fca5a5"}`
+                  }}>
+                    {cardAlerts[evt._id].message}
+                  </div>
+                )}
+
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingTop: "0.5rem", borderTop: "1px solid #f1f5f9" }}>
                   <span style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>
                     👥 {evt.totalRegistrations || 0} RSVPs
@@ -810,7 +881,7 @@ function StudentFeedSection() {
       </div>
 
       {/* ------------------------------------------------------------------------ */}
-      {/* 2. Navigation Tabs: Discover, Following & Campus Clubs                    */}
+      {/* 2. Navigation Tabs: Discover, Following, Saved & Campus Clubs             */}
       {/* ------------------------------------------------------------------------ */}
       <div className="feed-tabs">
         <button
@@ -826,10 +897,16 @@ function StudentFeedSection() {
           ⭐ Following Clubs
         </button>
         <button
+          className={`feed-tab-btn ${activeTab === "saved" ? "active" : ""}`}
+          onClick={() => setActiveTab("saved")}
+        >
+          🔖 Saved Bookmarks
+        </button>
+        <button
           className={`feed-tab-btn ${activeTab === "clubs" ? "active" : ""}`}
           onClick={() => setActiveTab("clubs")}
         >
-          🏛️ Clubs & Societies Directory
+          🏛️ Clubs & Societies
         </button>
       </div>
 
@@ -837,8 +914,8 @@ function StudentFeedSection() {
       {/* 3. Tab Content                                                            */}
       {/* ------------------------------------------------------------------------ */}
 
-      {/* TAB A & B: Feed Posts (Discover / Following) */}
-      {(activeTab === "discover" || activeTab === "following") && (
+      {/* TAB A, B & C: Feed Posts (Discover / Following / Saved) */}
+      {(activeTab === "discover" || activeTab === "following" || activeTab === "saved") && (
         <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
           {loadingPosts ? (
             <div className="card" style={{ textAlign: "center", padding: "2rem" }}>
@@ -846,10 +923,18 @@ function StudentFeedSection() {
             </div>
           ) : posts.length === 0 ? (
             <div className="card" style={{ textAlign: "center", padding: "3rem 1.5rem" }}>
-              <h4>{activeTab === "following" ? "Your Following Feed is Empty" : "No Posts on Campus Yet"}</h4>
+              <h4>
+                {activeTab === "following"
+                  ? "Your Following Feed is Empty"
+                  : activeTab === "saved"
+                  ? "No Bookmarked Posts Yet"
+                  : "No Posts on Campus Yet"}
+              </h4>
               <p style={{ color: "var(--text-muted)", marginTop: "0.5rem", fontSize: "0.9rem" }}>
                 {activeTab === "following"
                   ? "You haven't followed any clubs yet! Visit the 'Clubs & Societies' tab to follow your favorite clubs."
+                  : activeTab === "saved"
+                  ? "You haven't bookmarked any posts yet. Click the bookmark icon 🔖 on any announcement, poll, or event in Discover or Following to save it here for quick access!"
                   : "Campus organisations haven't published any announcements yet. Check back soon!"}
               </p>
               {activeTab === "following" && (
@@ -859,6 +944,15 @@ function StudentFeedSection() {
                   style={{ marginTop: "1rem" }}
                 >
                   Explore Clubs to Follow →
+                </button>
+              )}
+              {activeTab === "saved" && (
+                <button
+                  onClick={() => setActiveTab("discover")}
+                  className="btn btn-primary"
+                  style={{ marginTop: "1rem" }}
+                >
+                  Browse Discover Feed →
                 </button>
               )}
             </div>
@@ -932,9 +1026,25 @@ function StudentFeedSection() {
                 {/* 2. Interactive Campus Poll Content */}
                 {post.type === "poll" && (
                   <div>
-                    <h4 style={{ fontSize: "1.05rem", marginBottom: "1rem", color: "var(--text-main)" }}>
+                    <h4 style={{ fontSize: "1.05rem", marginBottom: "0.75rem", color: "var(--text-main)" }}>
                       {post.poll?.question}
                     </h4>
+
+                    {/* Card-level contextual alert */}
+                    {cardAlerts[post._id] && (
+                      <div style={{
+                        marginBottom: "0.75rem",
+                        padding: "0.5rem 0.85rem",
+                        borderRadius: "var(--radius)",
+                        fontSize: "0.85rem",
+                        fontWeight: 500,
+                        backgroundColor: cardAlerts[post._id].type === "success" ? "#dcfce7" : "#fee2e2",
+                        color: cardAlerts[post._id].type === "success" ? "#166534" : "#991b1b",
+                        border: `1px solid ${cardAlerts[post._id].type === "success" ? "#bbf7d0" : "#fca5a5"}`
+                      }}>
+                        {cardAlerts[post._id].message}
+                      </div>
+                    )}
 
                     {/* Has Student Voted? Show Results Bar; Otherwise Show Clickable Options */}
                     {post.userVotedOptionId ? (
@@ -993,50 +1103,117 @@ function StudentFeedSection() {
                 )}
 
                 {/* 3. Campus Event Content */}
-                {post.type === "event" && (
-                  <div style={{ backgroundColor: "#f8fafc", padding: "1.25rem", borderRadius: "var(--radius)", border: "1px solid var(--border-color)" }}>
-                    <h4 style={{ fontSize: "1.1rem", marginBottom: "0.5rem", color: "var(--text-main)" }}>
-                      {post.event?.title}
-                    </h4>
-
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "0.75rem", marginBottom: "1rem" }}>
-                      <div>
-                        <span style={{ fontSize: "0.8rem", color: "var(--text-muted)", display: "block" }}>
-                          📍 LOCATION
-                        </span>
-                        <strong style={{ fontSize: "0.95rem" }}>{post.event?.venue}</strong>
+                {post.type === "event" && (() => {
+                  const isPastEvent = post.event?.endAt && new Date(post.event.endAt) < new Date();
+                  return (
+                    <div style={{ backgroundColor: "#f8fafc", padding: "1.25rem", borderRadius: "var(--radius)", border: "1px solid var(--border-color)" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "0.5rem" }}>
+                        <h4 style={{ fontSize: "1.1rem", color: "var(--text-main)", margin: 0 }}>
+                          {post.event?.title}
+                        </h4>
+                        {isPastEvent && (
+                          <span className="badge" style={{ backgroundColor: "#fee2e2", color: "#991b1b", fontSize: "0.75rem", border: "1px solid #fca5a5" }}>
+                            EVENT ENDED
+                          </span>
+                        )}
                       </div>
-                      <div>
-                        <span style={{ fontSize: "0.8rem", color: "var(--text-muted)", display: "block" }}>
-                          🕒 START TIME
+
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "0.75rem", marginBottom: "0.75rem" }}>
+                        <div>
+                          <span style={{ fontSize: "0.8rem", color: "var(--text-muted)", display: "block" }}>
+                            📍 LOCATION
+                          </span>
+                          <strong style={{ fontSize: "0.95rem" }}>{post.event?.venue}</strong>
+                        </div>
+                        <div>
+                          <span style={{ fontSize: "0.8rem", color: "var(--text-muted)", display: "block" }}>
+                            🕒 START TIME
+                          </span>
+                          <span style={{ fontSize: "0.9rem" }}>
+                            {new Date(post.event?.startAt).toLocaleString("en-IN", {
+                              dateStyle: "medium",
+                              timeStyle: "short"
+                            })}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Card-level contextual alert */}
+                      {cardAlerts[post._id] && (
+                        <div style={{
+                          marginBottom: "0.75rem",
+                          padding: "0.5rem 0.85rem",
+                          borderRadius: "var(--radius)",
+                          fontSize: "0.85rem",
+                          fontWeight: 500,
+                          backgroundColor: cardAlerts[post._id].type === "success" ? "#dcfce7" : "#fee2e2",
+                          color: cardAlerts[post._id].type === "success" ? "#166534" : "#991b1b",
+                          border: `1px solid ${cardAlerts[post._id].type === "success" ? "#bbf7d0" : "#fca5a5"}`
+                        }}>
+                          {cardAlerts[post._id].message}
+                        </div>
+                      )}
+
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingTop: "0.75rem", borderTop: "1px solid var(--border-color)" }}>
+                        <span style={{ fontSize: "0.85rem", color: "var(--text-muted)" }}>
+                          👥 <strong>{post.totalRegistrations || 0}</strong> students registered
                         </span>
-                        <span style={{ fontSize: "0.9rem" }}>
-                          {new Date(post.event?.startAt).toLocaleString("en-IN", {
-                            dateStyle: "medium",
-                            timeStyle: "short"
-                          })}
-                        </span>
+
+                        {isPastEvent ? (
+                          <button
+                            disabled
+                            className="btn btn-outline"
+                            style={{
+                              backgroundColor: "#f1f5f9",
+                              borderColor: "#cbd5e1",
+                              color: "#64748b",
+                              cursor: "not-allowed",
+                              fontSize: "0.85rem"
+                            }}
+                          >
+                            {post.isRegistered ? "Event Ended (Registered)" : "Event Ended"}
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => handleRegisterEvent(post._id)}
+                            className={`btn ${post.isRegistered ? "btn-outline" : "btn-primary"}`}
+                            style={{
+                              backgroundColor: post.isRegistered ? "#f1f5f9" : undefined,
+                              borderColor: post.isRegistered ? "#cbd5e1" : undefined
+                            }}
+                          >
+                            {post.isRegistered ? "✓ Registered (Click to cancel)" : "Register for Event"}
+                          </button>
+                        )}
                       </div>
                     </div>
+                  );
+                })()}
 
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingTop: "0.75rem", borderTop: "1px solid var(--border-color)" }}>
-                      <span style={{ fontSize: "0.85rem", color: "var(--text-muted)" }}>
-                        👥 <strong>{post.totalRegistrations || 0}</strong> students registered
-                      </span>
-
-                      <button
-                        onClick={() => handleRegisterEvent(post._id)}
-                        className={`btn ${post.isRegistered ? "btn-outline" : "btn-primary"}`}
-                        style={{
-                          backgroundColor: post.isRegistered ? "#f1f5f9" : undefined,
-                          borderColor: post.isRegistered ? "#cbd5e1" : undefined
-                        }}
-                      >
-                        {post.isRegistered ? "✓ Registered (Click to cancel)" : "Register for Event"}
-                      </button>
-                    </div>
+                {/* 4. Post Interaction Bar (Likes & Bookmarks) */}
+                <div className="post-interaction-bar">
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+                    <button
+                      onClick={() => handleToggleLike(post._id)}
+                      className={`btn-interaction ${post.isLiked ? "btn-interaction-liked" : ""}`}
+                      title={post.isLiked ? "Unlike post" : "Like post"}
+                    >
+                      <span style={{ fontSize: "1rem" }}>{post.isLiked ? "❤️" : "🤍"}</span>
+                      <span>{post.likesCount || 0} {post.likesCount === 1 ? "Like" : "Likes"}</span>
+                    </button>
                   </div>
-                )}
+
+                  <div>
+                    <button
+                      onClick={() => handleToggleSave(post._id)}
+                      className={`btn-interaction ${post.isSaved ? "btn-interaction-saved" : ""}`}
+                      title={post.isSaved ? "Remove from bookmarks" : "Save post"}
+                    >
+                      <span style={{ fontSize: "1rem" }}>{post.isSaved ? "🔖" : "📑"}</span>
+                      <span>{post.isSaved ? "Saved" : "Save"}</span>
+                    </button>
+                  </div>
+                </div>
               </div>
             ))
           )}
@@ -1076,6 +1253,20 @@ function StudentFeedSection() {
                       {club.description || "Official university student organisation."}
                     </p>
                   </div>
+
+                  {cardAlerts[club._id] && (
+                    <div style={{
+                      marginBottom: "0.5rem",
+                      padding: "0.35rem 0.6rem",
+                      borderRadius: "var(--radius)",
+                      fontSize: "0.75rem",
+                      backgroundColor: cardAlerts[club._id].type === "success" ? "#dcfce7" : "#fee2e2",
+                      color: cardAlerts[club._id].type === "success" ? "#166534" : "#991b1b",
+                      border: `1px solid ${cardAlerts[club._id].type === "success" ? "#bbf7d0" : "#fca5a5"}`
+                    }}>
+                      {cardAlerts[club._id].message}
+                    </div>
+                  )}
 
                   <div style={{ paddingTop: "0.75rem", borderTop: "1px solid var(--border-color)" }}>
                     <button
