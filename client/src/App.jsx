@@ -7,7 +7,7 @@
 // - Admin Login
 // - Authenticated User Dashboard & Logout
 
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { BrowserRouter, Routes, Route, Link, NavLink, useNavigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 
@@ -559,17 +559,543 @@ function DashboardPage() {
 
       {role === "organisation" ? (
         <OrganisationPublishingSection />
+      ) : role === "student" ? (
+        <StudentFeedSection />
       ) : (
         <div className="card">
           <h3>Campus Activity Overview</h3>
           <p style={{ color: "var(--text-muted)", marginTop: "0.5rem" }}>
-            Welcome to your central campus hub. Browse updates, discover upcoming events, and participate in university polls.
+            Welcome to the administrator hub. Manage organisations and moderate campus updates.
           </p>
         </div>
       )}
     </div>
   );
 }
+
+// ------------------------------------------------------------------------------
+// Student Feed & Campus Experience Component (Milestone 5)
+// ------------------------------------------------------------------------------
+// Implements the Student Experience per the V1 Technical Blueprint:
+// 1. Upcoming Events Spotlight (Today & Tomorrow highlights)
+// 2. Dual Feed: 'Discover' (all campus posts) & 'Following' (followed clubs)
+// 3. Campus Clubs & Societies Directory with 1-click Follow/Unfollow
+// 4. Live Poll Voting (Strictly 1 vote per student with instant percentage bars)
+// 5. Live Event RSVP / Registration toggle
+function StudentFeedSection() {
+  const [activeTab, setActiveTab] = useState("discover"); // 'discover' | 'following' | 'clubs'
+  const [posts, setPosts] = useState([]);
+  const [loadingPosts, setLoadingPosts] = useState(true);
+  const [upcomingEvents, setUpcomingEvents] = useState([]);
+  const [loadingEvents, setLoadingEvents] = useState(true);
+  const [clubs, setClubs] = useState([]);
+  const [loadingClubs, setLoadingClubs] = useState(true);
+  const [actionAlert, setActionAlert] = useState(null);
+
+  const fetchUpcomingEvents = async () => {
+    try {
+      setLoadingEvents(true);
+      const res = await fetch("http://localhost:5050/api/posts/upcoming-events", {
+        credentials: "include"
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setUpcomingEvents(data.data);
+      }
+    } catch (err) {
+      console.error("Failed to load upcoming events:", err);
+    } finally {
+      setLoadingEvents(false);
+    }
+  };
+
+  const fetchFeed = async (tab) => {
+    try {
+      setLoadingPosts(true);
+      const res = await fetch(`http://localhost:5050/api/posts/feed?tab=${tab}`, {
+        credentials: "include"
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setPosts(data.data);
+      }
+    } catch (err) {
+      console.error("Failed to load campus feed:", err);
+    } finally {
+      setLoadingPosts(false);
+    }
+  };
+
+  const fetchClubs = async () => {
+    try {
+      setLoadingClubs(true);
+      const res = await fetch("http://localhost:5050/api/organisations", {
+        credentials: "include"
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setClubs(data.data);
+      }
+    } catch (err) {
+      console.error("Failed to load clubs:", err);
+    } finally {
+      setLoadingClubs(false);
+    }
+  };
+
+  // Fetch upcoming spotlight events on mount
+  useEffect(() => {
+    fetchUpcomingEvents();
+  }, []);
+
+  // Fetch feed posts whenever activeTab changes (if not 'clubs')
+  useEffect(() => {
+    if (activeTab === "clubs") {
+      fetchClubs();
+    } else {
+      fetchFeed(activeTab);
+    }
+  }, [activeTab]);
+
+  // 1. Cast a vote on a Poll
+  const handleVote = async (postId, optionId) => {
+    try {
+      setActionAlert(null);
+      const res = await fetch(`http://localhost:5050/api/posts/${postId}/vote`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ optionId })
+      });
+      const data = await res.json();
+
+      if (!res.ok || !data.success) {
+        throw new Error(data.message || "Failed to submit vote.");
+      }
+
+      setActionAlert({ type: "success", message: "Vote recorded successfully!" });
+      // Refresh feed to get updated vote counts and percentages
+      fetchFeed(activeTab);
+    } catch (err) {
+      setActionAlert({ type: "error", message: err.message });
+    }
+  };
+
+  // 2. RSVP / Register for an Event
+  const handleRegisterEvent = async (postId) => {
+    try {
+      setActionAlert(null);
+      const res = await fetch(`http://localhost:5050/api/posts/${postId}/register`, {
+        method: "POST",
+        credentials: "include"
+      });
+      const data = await res.json();
+
+      if (!res.ok || !data.success) {
+        throw new Error(data.message || "Registration action failed.");
+      }
+
+      setActionAlert({ type: "success", message: data.message });
+      // Refresh both feed and spotlight events
+      fetchFeed(activeTab);
+      fetchUpcomingEvents();
+    } catch (err) {
+      setActionAlert({ type: "error", message: err.message });
+    }
+  };
+
+  // 3. Toggle Follow / Unfollow a Club
+  const handleToggleFollow = async (orgId, isCurrentlyFollowing) => {
+    try {
+      setActionAlert(null);
+      const endpoint = `http://localhost:5050/api/organisations/${orgId}/follow`;
+      const method = isCurrentlyFollowing ? "DELETE" : "POST";
+
+      const res = await fetch(endpoint, {
+        method,
+        credentials: "include"
+      });
+      const data = await res.json();
+
+      if (!res.ok || !data.success) {
+        throw new Error(data.message || "Follow action failed.");
+      }
+
+      setActionAlert({ type: "success", message: data.message });
+
+      // If viewing clubs directory, refresh clubs
+      if (activeTab === "clubs") {
+        fetchClubs();
+      } else {
+        // Refresh feed so Following tab updates
+        fetchFeed(activeTab);
+      }
+    } catch (err) {
+      setActionAlert({ type: "error", message: err.message });
+    }
+  };
+
+  return (
+    <>
+      {/* Action Notification Alert */}
+      {actionAlert && (
+        <div className={`alert ${actionAlert.type === "success" ? "alert-success" : "alert-error"}`}>
+          {actionAlert.message}
+        </div>
+      )}
+
+      {/* ------------------------------------------------------------------------ */}
+      {/* 1. Upcoming Events Spotlight (Today & Tomorrow Highlights)                */}
+      {/* ------------------------------------------------------------------------ */}
+      <div className="card" style={{ backgroundColor: "#f0fdf4", borderColor: "#bbf7d0" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem" }}>
+          <div>
+            <h3 style={{ color: "#166534" }}>🎯 Upcoming Campus Events</h3>
+            <p style={{ color: "#15803d", fontSize: "0.85rem" }}>
+              Highlights of upcoming club events happening soon on campus.
+            </p>
+          </div>
+          <span className="badge badge-success">LIVE SPOTLIGHT</span>
+        </div>
+
+        {loadingEvents ? (
+          <p style={{ fontSize: "0.9rem", color: "var(--text-muted)" }}>Checking event schedule...</p>
+        ) : upcomingEvents.length === 0 ? (
+          <p style={{ fontSize: "0.9rem", color: "#166534", padding: "0.5rem 0" }}>
+            No upcoming events scheduled right now. Check back soon for new club activities!
+          </p>
+        ) : (
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: "1rem", marginTop: "0.5rem" }}>
+            {upcomingEvents.map((evt) => (
+              <div key={evt._id} className="event-spotlight-card">
+                <div>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem" }}>
+                    <span className="badge" style={{ backgroundColor: "#dcfce7", color: "#15803d", fontSize: "0.75rem" }}>
+                      {evt.dayLabel || "UPCOMING"}
+                    </span>
+                    <span style={{ fontSize: "0.8rem", color: "var(--text-muted)", fontWeight: 600 }}>
+                      {evt.organisationId?.name || "Campus Club"}
+                    </span>
+                  </div>
+                  <h4 style={{ fontSize: "1rem", marginBottom: "0.35rem" }}>{evt.event?.title}</h4>
+                  <p style={{ fontSize: "0.85rem", color: "var(--text-muted)", marginBottom: "0.25rem" }}>
+                    📍 {evt.event?.venue}
+                  </p>
+                  <p style={{ fontSize: "0.8rem", color: "var(--text-muted)", marginBottom: "0.75rem" }}>
+                    🕒 {new Date(evt.event?.startAt).toLocaleDateString("en-IN", {
+                      month: "short",
+                      day: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit"
+                    })}
+                  </p>
+                </div>
+
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingTop: "0.5rem", borderTop: "1px solid #f1f5f9" }}>
+                  <span style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>
+                    👥 {evt.totalRegistrations || 0} RSVPs
+                  </span>
+                  <button
+                    onClick={() => handleRegisterEvent(evt._id)}
+                    className={`btn ${evt.isRegistered ? "btn-outline" : "btn-primary"}`}
+                    style={{ fontSize: "0.8rem", padding: "0.3rem 0.75rem" }}
+                  >
+                    {evt.isRegistered ? "Registered ✓" : "RSVP Now"}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* ------------------------------------------------------------------------ */}
+      {/* 2. Navigation Tabs: Discover, Following & Campus Clubs                    */}
+      {/* ------------------------------------------------------------------------ */}
+      <div className="feed-tabs">
+        <button
+          className={`feed-tab-btn ${activeTab === "discover" ? "active" : ""}`}
+          onClick={() => setActiveTab("discover")}
+        >
+          🌐 Discover Campus
+        </button>
+        <button
+          className={`feed-tab-btn ${activeTab === "following" ? "active" : ""}`}
+          onClick={() => setActiveTab("following")}
+        >
+          ⭐ Following Clubs
+        </button>
+        <button
+          className={`feed-tab-btn ${activeTab === "clubs" ? "active" : ""}`}
+          onClick={() => setActiveTab("clubs")}
+        >
+          🏛️ Clubs & Societies Directory
+        </button>
+      </div>
+
+      {/* ------------------------------------------------------------------------ */}
+      {/* 3. Tab Content                                                            */}
+      {/* ------------------------------------------------------------------------ */}
+
+      {/* TAB A & B: Feed Posts (Discover / Following) */}
+      {(activeTab === "discover" || activeTab === "following") && (
+        <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
+          {loadingPosts ? (
+            <div className="card" style={{ textAlign: "center", padding: "2rem" }}>
+              <p style={{ color: "var(--text-muted)" }}>Loading campus updates...</p>
+            </div>
+          ) : posts.length === 0 ? (
+            <div className="card" style={{ textAlign: "center", padding: "3rem 1.5rem" }}>
+              <h4>{activeTab === "following" ? "Your Following Feed is Empty" : "No Posts on Campus Yet"}</h4>
+              <p style={{ color: "var(--text-muted)", marginTop: "0.5rem", fontSize: "0.9rem" }}>
+                {activeTab === "following"
+                  ? "You haven't followed any clubs yet! Visit the 'Clubs & Societies' tab to follow your favorite clubs."
+                  : "Campus organisations haven't published any announcements yet. Check back soon!"}
+              </p>
+              {activeTab === "following" && (
+                <button
+                  onClick={() => setActiveTab("clubs")}
+                  className="btn btn-primary"
+                  style={{ marginTop: "1rem" }}
+                >
+                  Explore Clubs to Follow →
+                </button>
+              )}
+            </div>
+          ) : (
+            posts.map((post) => (
+              <div key={post._id} className="card" style={{ padding: "1.5rem", marginBottom: 0 }}>
+                {/* Post Header */}
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+                    <div
+                      style={{
+                        width: "42px",
+                        height: "42px",
+                        borderRadius: "50%",
+                        backgroundColor: "#e0e7ff",
+                        color: "var(--primary-color)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontWeight: 700,
+                        fontSize: "1.1rem"
+                      }}
+                    >
+                      {post.organisationId?.name?.charAt(0) || "C"}
+                    </div>
+                    <div>
+                      <h4 style={{ margin: 0, fontSize: "1rem" }}>
+                        {post.organisationId?.name || "Campus Organisation"}
+                      </h4>
+                      <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", marginTop: "0.2rem" }}>
+                        <span className="badge badge-org" style={{ fontSize: "0.7rem", padding: "0.15rem 0.5rem" }}>
+                          {post.organisationId?.category || "General"}
+                        </span>
+                        <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
+                          • {new Date(post.createdAt).toLocaleDateString("en-IN", {
+                            day: "numeric",
+                            month: "short"
+                          })}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <span className="badge" style={{ fontSize: "0.75rem" }}>
+                    {post.type === "normal" ? "📢 ANNOUNCEMENT" : post.type === "poll" ? "📊 POLL" : "📅 EVENT"}
+                  </span>
+                </div>
+
+                {/* 1. Normal Announcement Content */}
+                {post.type === "normal" && (
+                  <div>
+                    {post.imageUrl && (
+                      <img
+                        src={post.imageUrl}
+                        alt="Announcement Poster"
+                        style={{
+                          width: "100%",
+                          maxHeight: "380px",
+                          objectFit: "cover",
+                          borderRadius: "var(--radius)",
+                          marginBottom: "1rem"
+                        }}
+                      />
+                    )}
+                    <p style={{ fontSize: "0.95rem", lineHeight: 1.6, whiteSpace: "pre-wrap" }}>
+                      {post.caption}
+                    </p>
+                  </div>
+                )}
+
+                {/* 2. Interactive Campus Poll Content */}
+                {post.type === "poll" && (
+                  <div>
+                    <h4 style={{ fontSize: "1.05rem", marginBottom: "1rem", color: "var(--text-main)" }}>
+                      {post.poll?.question}
+                    </h4>
+
+                    {/* Has Student Voted? Show Results Bar; Otherwise Show Clickable Options */}
+                    {post.userVotedOptionId ? (
+                      <div>
+                        {post.poll?.options?.map((opt) => {
+                          const isVoted = post.userVotedOptionId === opt.optionId;
+                          return (
+                            <div
+                              key={opt.optionId}
+                              className={`poll-result-bar ${isVoted ? "user-choice" : ""}`}
+                            >
+                              <div
+                                className={`poll-result-fill ${isVoted ? "user-choice-fill" : ""}`}
+                                style={{ width: `${opt.percentage}%` }}
+                              />
+                              <div className="poll-result-content">
+                                <span style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                                  {opt.text}
+                                  {isVoted && (
+                                    <span style={{ color: "var(--primary-color)", fontSize: "0.85rem", fontWeight: 700 }}>
+                                      ✓ Your Vote
+                                    </span>
+                                  )}
+                                </span>
+                                <span style={{ fontWeight: 600, color: "var(--text-muted)", fontSize: "0.85rem" }}>
+                                  {opt.votes} ({opt.percentage}%)
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                        <p style={{ fontSize: "0.8rem", color: "var(--text-muted)", marginTop: "0.5rem" }}>
+                          Total Votes: {post.totalVotes || 0} • Single vote recorded
+                        </p>
+                      </div>
+                    ) : (
+                      <div>
+                        <p style={{ fontSize: "0.85rem", color: "var(--text-muted)", marginBottom: "0.75rem" }}>
+                          Click an option below to cast your vote:
+                        </p>
+                        {post.poll?.options?.map((opt) => (
+                          <button
+                            key={opt.optionId}
+                            onClick={() => handleVote(post._id, opt.optionId)}
+                            className="poll-option-vote-btn"
+                          >
+                            <span>{opt.text}</span>
+                            <span style={{ color: "var(--primary-color)", fontSize: "0.85rem" }}>
+                              Vote →
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* 3. Campus Event Content */}
+                {post.type === "event" && (
+                  <div style={{ backgroundColor: "#f8fafc", padding: "1.25rem", borderRadius: "var(--radius)", border: "1px solid var(--border-color)" }}>
+                    <h4 style={{ fontSize: "1.1rem", marginBottom: "0.5rem", color: "var(--text-main)" }}>
+                      {post.event?.title}
+                    </h4>
+
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "0.75rem", marginBottom: "1rem" }}>
+                      <div>
+                        <span style={{ fontSize: "0.8rem", color: "var(--text-muted)", display: "block" }}>
+                          📍 LOCATION
+                        </span>
+                        <strong style={{ fontSize: "0.95rem" }}>{post.event?.venue}</strong>
+                      </div>
+                      <div>
+                        <span style={{ fontSize: "0.8rem", color: "var(--text-muted)", display: "block" }}>
+                          🕒 START TIME
+                        </span>
+                        <span style={{ fontSize: "0.9rem" }}>
+                          {new Date(post.event?.startAt).toLocaleString("en-IN", {
+                            dateStyle: "medium",
+                            timeStyle: "short"
+                          })}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingTop: "0.75rem", borderTop: "1px solid var(--border-color)" }}>
+                      <span style={{ fontSize: "0.85rem", color: "var(--text-muted)" }}>
+                        👥 <strong>{post.totalRegistrations || 0}</strong> students registered
+                      </span>
+
+                      <button
+                        onClick={() => handleRegisterEvent(post._id)}
+                        className={`btn ${post.isRegistered ? "btn-outline" : "btn-primary"}`}
+                        style={{
+                          backgroundColor: post.isRegistered ? "#f1f5f9" : undefined,
+                          borderColor: post.isRegistered ? "#cbd5e1" : undefined
+                        }}
+                      >
+                        {post.isRegistered ? "✓ Registered (Click to cancel)" : "Register for Event"}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))
+          )}
+        </div>
+      )}
+
+      {/* TAB C: Campus Clubs Directory */}
+      {activeTab === "clubs" && (
+        <div>
+          <div className="card" style={{ marginBottom: "1rem" }}>
+            <h3>Campus Clubs & Student Societies</h3>
+            <p style={{ color: "var(--text-muted)", fontSize: "0.9rem", marginTop: "0.25rem" }}>
+              Follow student clubs to receive their official announcements and event invitations directly in your 'Following' feed.
+            </p>
+          </div>
+
+          {loadingClubs ? (
+            <div className="card" style={{ textAlign: "center", padding: "2rem" }}>
+              <p style={{ color: "var(--text-muted)" }}>Loading campus clubs...</p>
+            </div>
+          ) : (
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "1rem" }}>
+              {clubs.map((club) => (
+                <div key={club._id} className="card" style={{ display: "flex", flexDirection: "column", justifyContent: "space-between", marginBottom: 0 }}>
+                  <div>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "0.5rem" }}>
+                      <span className="badge badge-org" style={{ fontSize: "0.75rem" }}>
+                        {club.category || "Club"}
+                      </span>
+                      <span style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>
+                        👥 {club.followersCount || 0} followers
+                      </span>
+                    </div>
+
+                    <h4 style={{ fontSize: "1.1rem", marginBottom: "0.35rem" }}>{club.name}</h4>
+                    <p style={{ fontSize: "0.85rem", color: "var(--text-muted)", lineHeight: 1.5, marginBottom: "1rem" }}>
+                      {club.description || "Official university student organisation."}
+                    </p>
+                  </div>
+
+                  <div style={{ paddingTop: "0.75rem", borderTop: "1px solid var(--border-color)" }}>
+                    <button
+                      onClick={() => handleToggleFollow(club._id, club.isFollowing)}
+                      className={`btn-follow ${club.isFollowing ? "btn-follow-active" : "btn-follow-inactive"}`}
+                      style={{ width: "100%" }}
+                    >
+                      {club.isFollowing ? "Following ✓ (Click to unfollow)" : "+ Follow Club"}
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </>
+  );
+}
+
 
 // ------------------------------------------------------------------------------
 // Organisation Publishing & Post Management Component
@@ -593,11 +1119,6 @@ function OrganisationPublishingSection() {
     endAt: ""
   });
 
-  // Fetch organisation's own posts on mount
-  useEffect(() => {
-    fetchMyPosts();
-  }, []);
-
   const fetchMyPosts = async () => {
     try {
       setLoadingPosts(true);
@@ -614,6 +1135,11 @@ function OrganisationPublishingSection() {
       setLoadingPosts(false);
     }
   };
+
+  // Fetch organisation's own posts on mount
+  useEffect(() => {
+    fetchMyPosts();
+  }, []);
 
   const handleAddPollOption = () => {
     if (pollOptions.length < 6) {

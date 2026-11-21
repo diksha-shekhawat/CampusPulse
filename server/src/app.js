@@ -13,6 +13,7 @@ const mongoose = require("mongoose");
 // Routes
 const authRoutes = require("./routes/authRoutes");
 const postRoutes = require("./routes/postRoutes");
+const organisationRoutes = require("./routes/organisationRoutes");
 
 const app = express();
 
@@ -56,6 +57,7 @@ app.use(express.urlencoded({ extended: true }));
 // ------------------------------------------------------------------------------
 app.use("/api/auth", authRoutes);
 app.use("/api/posts", postRoutes);
+app.use("/api/organisations", organisationRoutes);
 
 // ------------------------------------------------------------------------------
 // Health Check Route (Used to verify backend and database connection)

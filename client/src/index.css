@@ -207,3 +207,150 @@ body {
   color: #b45309;
 }
 
+/* Feed Navigation Tabs */
+.feed-tabs {
+  display: flex;
+  gap: 0.5rem;
+  border-bottom: 2px solid var(--border-color);
+  margin-bottom: 1.5rem;
+  padding-bottom: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.feed-tab-btn {
+  background: none;
+  border: none;
+  font-family: inherit;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.feed-tab-btn:hover {
+  color: var(--primary-color);
+  background-color: #eff6ff;
+}
+
+.feed-tab-btn.active {
+  color: #ffffff;
+  background-color: var(--primary-color);
+}
+
+/* Poll Voting & Percentage Styles */
+.poll-option-vote-btn {
+  width: 100%;
+  text-align: left;
+  padding: 0.75rem 1rem;
+  margin-bottom: 0.5rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  background-color: #ffffff;
+  font-family: inherit;
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: all 0.2s ease;
+}
+
+.poll-option-vote-btn:hover {
+  border-color: var(--primary-color);
+  background-color: #eff6ff;
+}
+
+.poll-result-bar {
+  position: relative;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  margin-bottom: 0.5rem;
+  overflow: hidden;
+  background-color: #f1f5f9;
+}
+
+.poll-result-bar.user-choice {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 1px var(--primary-color);
+}
+
+.poll-result-fill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  background-color: #bfdbfe;
+  transition: width 0.4s ease;
+  z-index: 1;
+}
+
+.poll-result-fill.user-choice-fill {
+  background-color: #93c5fd;
+}
+
+.poll-result-content {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  font-size: 0.95rem;
+  font-weight: 500;
+}
+
+/* Upcoming Events Spotlight */
+.event-spotlight-card {
+  border: 1px solid var(--border-color);
+  border-left: 4px solid var(--primary-color);
+  border-radius: var(--radius);
+  padding: 1.25rem;
+  background-color: #ffffff;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.event-spotlight-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+/* Follow / Unfollow Button */
+.btn-follow {
+  padding: 0.35rem 0.85rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  border-radius: 9999px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-follow-active {
+  background-color: #e2e8f0;
+  color: #334155;
+  border: 1px solid #cbd5e1;
+}
+
+.btn-follow-active:hover {
+  background-color: #fee2e2;
+  color: #dc2626;
+  border-color: #fca5a5;
+}
+
+.btn-follow-inactive {
+  background-color: #eff6ff;
+  color: var(--primary-color);
+  border: 1px solid #bfdbfe;
+}
+
+.btn-follow-inactive:hover {
+  background-color: var(--primary-color);
+  color: #ffffff;
+}
+
+

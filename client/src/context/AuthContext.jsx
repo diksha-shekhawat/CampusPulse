@@ -6,7 +6,7 @@
 // - Checks /api/auth/me on mount to automatically restore the session from the httpOnly cookie.
 // - Provides login, student register, and logout functions to all components.
 
-import React, { createContext, useContext, useState, useEffect } from "react";
+import { createContext, useContext, useState, useEffect } from "react";
 
 const AuthContext = createContext();
 
@@ -14,11 +14,6 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [role, setRole] = useState(null);
   const [loading, setLoading] = useState(true);
-
-  // Check if a user session already exists on page load/refresh
-  useEffect(() => {
-    checkAuthSession();
-  }, []);
 
   const checkAuthSession = async () => {
     try {
@@ -35,7 +30,7 @@ export function AuthProvider({ children }) {
         setUser(null);
         setRole(null);
       }
-    } catch (error) {
+    } catch {
       console.warn("Could not reach backend or session expired.");
       setUser(null);
       setRole(null);
@@ -43,6 +38,11 @@ export function AuthProvider({ children }) {
       setLoading(false);
     }
   };
+
+  // Check if a user session already exists on page load/refresh
+  useEffect(() => {
+    checkAuthSession();
+  }, []);
 
   /**
    * Log in a user based on their role.
