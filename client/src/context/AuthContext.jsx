@@ -7,6 +7,7 @@
 // - Provides login, student register, and logout functions to all components.
 
 import { createContext, useContext, useState, useEffect } from "react";
+import { API_BASE_URL } from "../config/api";
 
 const AuthContext = createContext();
 
@@ -18,7 +19,7 @@ export function AuthProvider({ children }) {
   const checkAuthSession = async () => {
     try {
       // Include credentials: 'include' so httpOnly cookies are sent with the request
-      const response = await fetch("http://localhost:5050/api/auth/me", {
+      const response = await fetch(`${API_BASE_URL}/api/auth/me`, {
         credentials: "include"
       });
       const data = await response.json();
@@ -51,9 +52,9 @@ export function AuthProvider({ children }) {
    */
   const login = async (targetRole, credentials) => {
     let endpoint = "";
-    if (targetRole === "student") endpoint = "http://localhost:5050/api/auth/student/login";
-    else if (targetRole === "organisation") endpoint = "http://localhost:5050/api/auth/organisation/login";
-    else if (targetRole === "admin") endpoint = "http://localhost:5050/api/auth/admin/login";
+    if (targetRole === "student") endpoint = `${API_BASE_URL}/api/auth/student/login`;
+    else if (targetRole === "organisation") endpoint = `${API_BASE_URL}/api/auth/organisation/login`;
+    else if (targetRole === "admin") endpoint = `${API_BASE_URL}/api/auth/admin/login`;
 
     const response = await fetch(endpoint, {
       method: "POST",
@@ -76,7 +77,7 @@ export function AuthProvider({ children }) {
    * Register a new student account.
    */
   const registerStudent = async (studentData) => {
-    const response = await fetch("http://localhost:5050/api/auth/student/register", {
+    const response = await fetch(`${API_BASE_URL}/api/auth/student/register`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
@@ -98,7 +99,7 @@ export function AuthProvider({ children }) {
    */
   const logout = async () => {
     try {
-      await fetch("http://localhost:5050/api/auth/logout", {
+      await fetch(`${API_BASE_URL}/api/auth/logout`, {
         method: "POST",
         credentials: "include"
       });

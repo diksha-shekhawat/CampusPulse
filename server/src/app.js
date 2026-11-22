@@ -7,6 +7,7 @@
 
 const express = require("express");
 const cors = require("cors");
+const helmet = require("helmet");
 const cookieParser = require("cookie-parser");
 const mongoose = require("mongoose");
 
@@ -21,7 +22,11 @@ const app = express();
 // Global Middlewares
 // ------------------------------------------------------------------------------
 
-// 1. CORS (Cross-Origin Resource Sharing):
+// 1. Security Headers:
+// Helmet sets secure HTTP headers (XSS filter, Content-Security-Policy, anti-clickjacking)
+app.use(helmet());
+
+// 2. CORS (Cross-Origin Resource Sharing):
 // Allows our React frontend (Vite ports 5173, 5174, etc.) to send cookies and make API requests.
 const allowedOrigins = [
   "http://localhost:5173",
@@ -88,12 +93,16 @@ app.use((req, res, next) => {
 // ------------------------------------------------------------------------------
 // Express recognizes this as an error handler because it has 4 parameters: (err, req, res, next).
 app.use((err, req, res, next) => {
-  console.error("Unhandled Error:", err);
+  if (process.env.NODE_ENV !== "production") {
+    console.error("Unhandled Error:", err);
+  }
 
   const statusCode = err.statusCode || 500;
   res.status(statusCode).json({
     success: false,
-    message: err.message || "Internal Server Error"
+    message: process.env.NODE_ENV === "production" && statusCode === 500
+      ? "An unexpected internal server error occurred."
+      : err.message || "Internal Server Error"
   });
 });
 

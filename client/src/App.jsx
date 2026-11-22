@@ -10,6 +10,7 @@
 import { useState, useEffect } from "react";
 import { BrowserRouter, Routes, Route, Link, NavLink, useNavigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./context/AuthContext";
+import { API_BASE_URL } from "./config/api";
 
 // ------------------------------------------------------------------------------
 // Top Navigation Bar
@@ -606,7 +607,7 @@ function StudentFeedSection() {
   const fetchUpcomingEvents = async () => {
     try {
       setLoadingEvents(true);
-      const res = await fetch("http://localhost:5050/api/posts/upcoming-events", {
+      const res = await fetch(`${API_BASE_URL}/api/posts/upcoming-events`, {
         credentials: "include"
       });
       const data = await res.json();
@@ -623,7 +624,7 @@ function StudentFeedSection() {
   const fetchFeed = async (tab) => {
     try {
       setLoadingPosts(true);
-      const res = await fetch(`http://localhost:5050/api/posts/feed?tab=${tab}`, {
+      const res = await fetch(`${API_BASE_URL}/api/posts/feed?tab=${tab}`, {
         credentials: "include"
       });
       const data = await res.json();
@@ -640,7 +641,7 @@ function StudentFeedSection() {
   const fetchClubs = async () => {
     try {
       setLoadingClubs(true);
-      const res = await fetch("http://localhost:5050/api/organisations", {
+      const res = await fetch(`${API_BASE_URL}/api/organisations`, {
         credentials: "include"
       });
       const data = await res.json();
@@ -671,7 +672,7 @@ function StudentFeedSection() {
   // 1. Cast a vote on a Poll
   const handleVote = async (postId, optionId) => {
     try {
-      const res = await fetch(`http://localhost:5050/api/posts/${postId}/vote`, {
+      const res = await fetch(`${API_BASE_URL}/api/posts/${postId}/vote`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -694,7 +695,7 @@ function StudentFeedSection() {
   // 2. RSVP / Register for an Event
   const handleRegisterEvent = async (postId) => {
     try {
-      const res = await fetch(`http://localhost:5050/api/posts/${postId}/register`, {
+      const res = await fetch(`${API_BASE_URL}/api/posts/${postId}/register`, {
         method: "POST",
         credentials: "include"
       });
@@ -716,7 +717,7 @@ function StudentFeedSection() {
   // 3. Toggle Follow / Unfollow a Club
   const handleToggleFollow = async (orgId, isCurrentlyFollowing) => {
     try {
-      const endpoint = `http://localhost:5050/api/organisations/${orgId}/follow`;
+      const endpoint = `${API_BASE_URL}/api/organisations/${orgId}/follow`;
       const method = isCurrentlyFollowing ? "DELETE" : "POST";
 
       const res = await fetch(endpoint, {
@@ -746,7 +747,7 @@ function StudentFeedSection() {
   // 4. Toggle Like on a Post
   const handleToggleLike = async (postId) => {
     try {
-      const res = await fetch(`http://localhost:5050/api/posts/${postId}/like`, {
+      const res = await fetch(`${API_BASE_URL}/api/posts/${postId}/like`, {
         method: "POST",
         credentials: "include"
       });
@@ -772,7 +773,7 @@ function StudentFeedSection() {
   // 5. Toggle Save / Bookmark on a Post
   const handleToggleSave = async (postId) => {
     try {
-      const res = await fetch(`http://localhost:5050/api/posts/${postId}/save`, {
+      const res = await fetch(`${API_BASE_URL}/api/posts/${postId}/save`, {
         method: "POST",
         credentials: "include"
       });
@@ -1313,7 +1314,7 @@ function OrganisationPublishingSection() {
   const fetchMyPosts = async () => {
     try {
       setLoadingPosts(true);
-      const res = await fetch("http://localhost:5050/api/posts/my-posts", {
+      const res = await fetch(`${API_BASE_URL}/api/posts/my-posts`, {
         credentials: "include"
       });
       const data = await res.json();
@@ -1375,7 +1376,7 @@ function OrganisationPublishingSection() {
     }
 
     try {
-      const res = await fetch("http://localhost:5050/api/posts", {
+      const res = await fetch(`${API_BASE_URL}/api/posts`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -1412,7 +1413,7 @@ function OrganisationPublishingSection() {
     }
 
     try {
-      const res = await fetch(`http://localhost:5050/api/posts/${postId}`, {
+      const res = await fetch(`${API_BASE_URL}/api/posts/${postId}`, {
         method: "DELETE",
         credentials: "include"
       });
