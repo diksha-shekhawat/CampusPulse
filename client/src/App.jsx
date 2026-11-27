@@ -8,7 +8,7 @@
 // - Authenticated User Dashboard & Logout
 
 import { useState, useEffect } from "react";
-import { BrowserRouter, Routes, Route, Link, NavLink, useNavigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Link, NavLink, useNavigate, useLocation } from "react-router-dom";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { API_BASE_URL } from "./config/api";
 
@@ -77,49 +77,55 @@ function Navigation() {
 }
 
 // ------------------------------------------------------------------------------
-// Home Page
+// Home Page (Full-Screen Landing Page)
 // ------------------------------------------------------------------------------
 function HomePage() {
-  const { isAuthenticated, user, role } = useAuth();
+  const { isAuthenticated } = useAuth();
+  const loginTarget = isAuthenticated ? "/dashboard" : "/student/login";
 
   return (
-    <div className="container">
-      <div className="card" style={{ textAlign: "center", padding: "3rem 1.5rem" }}>
-        <span className="badge badge-success" style={{ marginBottom: "1rem" }}>
-          Official University Platform
-        </span>
-        <h1 style={{ fontSize: "2rem", marginBottom: "0.75rem" }}>
-          Welcome to Campus Pulse
-        </h1>
-        <p style={{ color: "var(--text-muted)", maxWidth: "600px", margin: "0 auto 2rem" }}>
-          The university campus platform where students discover official announcements,
-          polls, and events, while student organisations publish updates.
-        </p>
+    <section className="landing-hero" aria-label="JKLU – Campus Pulse Landing Page">
+      <div className="landing-overlay" aria-hidden="true" />
 
-        {!isAuthenticated ? (
-          <div style={{ display: "flex", gap: "1rem", justifyContent: "center", flexWrap: "wrap" }}>
-            <Link to="/student/login" className="btn btn-primary">
-              Student Portal
-            </Link>
-            <Link to="/organisation/login" className="btn btn-outline">
-              Organisation Login
-            </Link>
-            <Link to="/admin/login" className="btn btn-outline">
-              Admin Portal
-            </Link>
-          </div>
-        ) : (
-          <div>
-            <p style={{ marginBottom: "1rem" }}>
-              Logged in as <strong>{user.name}</strong> ({role})
-            </p>
-            <Link to="/dashboard" className="btn btn-primary">
-              Go to Your Dashboard →
-            </Link>
-          </div>
-        )}
+      <header className="landing-header">
+        <Link to="/" className="landing-logo-link" aria-label="JKLU Campus Pulse Home">
+          <img
+            src="/JKLU_Logo.png"
+            alt="JK Lakshmipat University, Jaipur"
+            className="landing-logo-img"
+          />
+        </Link>
+
+        <Link to={loginTarget} className="landing-login-btn">
+          <svg
+            className="landing-login-icon"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.1"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
+            <polyline points="10 17 15 12 10 7" />
+            <line x1="15" y1="12" x2="3" y2="12" />
+          </svg>
+          <span>Login</span>
+        </Link>
+      </header>
+
+      <div className="landing-content">
+        <h1 className="landing-title">
+          <span className="landing-title-navy">JKLU – </span>
+          <span className="landing-title-bright">Campus Pulse</span>
+        </h1>
+        <p className="landing-tagline">Connect • Interact • Belong</p>
+        <p className="landing-description">
+          Your campus community, all in one place.
+        </p>
       </div>
-    </div>
+    </section>
   );
 }
 
@@ -1751,20 +1757,31 @@ function OrganisationPublishingSection() {
 // ------------------------------------------------------------------------------
 // App Root Component
 // ------------------------------------------------------------------------------
+function AppShell() {
+  const { pathname } = useLocation();
+  const isLandingPage = pathname === "/";
+
+  return (
+    <>
+      {!isLandingPage && <Navigation />}
+      <main>
+        <Routes>
+          <Route path="/" element={<HomePage />} />
+          <Route path="/student/login" element={<StudentLoginPage />} />
+          <Route path="/organisation/login" element={<OrgLoginPage />} />
+          <Route path="/admin/login" element={<AdminLoginPage />} />
+          <Route path="/dashboard" element={<DashboardPage />} />
+        </Routes>
+      </main>
+    </>
+  );
+}
+
 export default function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
-        <Navigation />
-        <main>
-          <Routes>
-            <Route path="/" element={<HomePage />} />
-            <Route path="/student/login" element={<StudentLoginPage />} />
-            <Route path="/organisation/login" element={<OrgLoginPage />} />
-            <Route path="/admin/login" element={<AdminLoginPage />} />
-            <Route path="/dashboard" element={<DashboardPage />} />
-          </Routes>
-        </main>
+        <AppShell />
       </BrowserRouter>
     </AuthProvider>
   );

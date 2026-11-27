@@ -405,4 +405,154 @@ body {
   color: #1d4ed8;
 }
 
+/* ==============================================================================
+   Landing Page (JKLU – Campus Pulse)
+   ============================================================================== */
+.landing-hero {
+  position: relative;
+  width: 100%;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background-image: url("/BackgroundImage.webp");
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  font-family: "Plus Jakarta Sans", var(--font-family);
+  overflow: hidden;
+}
+
+.landing-overlay {
+  position: absolute;
+  inset: 0;
+  background-color: rgba(255, 255, 255, 0.45);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.landing-header {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: clamp(1rem, 2.5vw, 1.85rem) clamp(1.25rem, 3.5vw, 2.75rem);
+}
+
+.landing-logo-link {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+}
+
+.landing-logo-img {
+  height: clamp(68px, 7.5vw, 102px);
+  width: auto;
+  display: block;
+  object-fit: contain;
+}
+
+.landing-login-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background-color: #164675;
+  color: #ffffff;
+  font-weight: 600;
+  font-size: clamp(0.9rem, 1.05vw, 1.02rem);
+  padding: 0.65rem 1.45rem;
+  border-radius: 9999px;
+  text-decoration: none;
+  box-shadow: 0 4px 14px rgba(18, 59, 101, 0.22);
+  transition: background-color 0.22s ease, transform 0.22s ease, box-shadow 0.22s ease;
+}
+
+.landing-login-btn:hover {
+  background-color: #0f3559;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(18, 59, 101, 0.32);
+}
+
+.landing-login-btn:active {
+  transform: translateY(0);
+}
+
+.landing-login-icon {
+  width: 1.1em;
+  height: 1.1em;
+  flex-shrink: 0;
+}
+
+.landing-content {
+  position: relative;
+  z-index: 2;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 0 1.5rem clamp(5rem, 15vh, 10rem);
+}
+
+.landing-title {
+  font-size: clamp(2.15rem, 5.4vw, 4.75rem);
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.025em;
+  margin-bottom: clamp(0.65rem, 1.5vh, 1.1rem);
+  text-shadow: 0 1px 12px rgba(255, 255, 255, 0.35);
+}
+
+.landing-title-navy {
+  color: #123B65;
+}
+
+.landing-title-bright {
+  color: #0876D1;
+}
+
+.landing-tagline {
+  font-size: clamp(1.1rem, 2.15vw, 1.85rem);
+  font-weight: 600;
+  color: #123B65;
+  letter-spacing: 0.015em;
+  margin-bottom: clamp(0.5rem, 1.2vh, 0.85rem);
+  text-shadow: 0 1px 10px rgba(255, 255, 255, 0.35);
+}
+
+.landing-description {
+  font-size: clamp(0.98rem, 1.35vw, 1.28rem);
+  font-weight: 500;
+  color: #243b53;
+  max-width: 620px;
+  text-shadow: 0 1px 10px rgba(255, 255, 255, 0.35);
+}
+
+@media (min-width: 640px) {
+  .landing-title {
+    white-space: nowrap;
+  }
+}
+
+@media (max-width: 480px) {
+  .landing-header {
+    padding: 1rem 1.1rem;
+  }
+
+  .landing-logo-img {
+    height: 62px;
+  }
+
+  .landing-login-btn {
+    padding: 0.55rem 1.15rem;
+    font-size: 0.9rem;
+  }
+
+  .landing-content {
+    padding: 0 1rem 6rem;
+  }
+}
+
 
